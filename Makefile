@@ -79,6 +79,7 @@ build-source:
 install-source:
 	@echo "\n Installing $(POD_NAME) \n"
 	cd pod-build && make install
+	mv $(BUILD_PREFIX)/lib/pkgconfig/nlopt.pc $(BUILD_PREFIX)/lib/pkgconfig/nlopt-2.4.1.pc
 	@touch installed.touch
 
 pkgconfig-source:
