@@ -1,7 +1,7 @@
 diff -rupN nlopt-2.4.1/api/general.c nlopt-2.4.1.new/api/general.c
 --- nlopt-2.4.1/api/general.c	2013-08-27 12:52:54.000000000 -0400
-+++ nlopt-2.4.1.new/api/general.c	2014-03-10 13:31:59.034865733 -0400
-@@ -139,3 +139,32 @@ void nlopt_srand_time_default(void) {
++++ nlopt-2.4.1.new/api/general.c	2014-03-10 13:45:37.252632590 -0400
+@@ -139,3 +139,37 @@ void nlopt_srand_time_default(void) {
  }
  
  /*************************************************************************/
@@ -31,6 +31,11 @@ diff -rupN nlopt-2.4.1/api/general.c nlopt-2.4.1.new/api/general.c
 +  _error_line = line;
 +  snprintf( _error_reason, 255, "~s", reason ); 
 +  snprintf( _error_file, 255, "~s", file );
++  printf( "**nlopt-error-set: %s (no:%d %s:%d)",
++	  _error_reason,
++	  _error_result,
++	  _error_file,
++	  _error_line);
 +}
 +
 +/*************************************************************************/
