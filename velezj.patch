@@ -76,7 +76,7 @@ diff -rupN nlopt-2.4.1/api/nlopt.h nlopt-2.4.1.new/api/nlopt.h
     then set various optimization parameters, and then execute the
 diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
 --- nlopt-2.4.1/api/optimize.c	2013-08-27 12:52:24.000000000 -0400
-+++ nlopt-2.4.1.new/api/optimize.c	2014-03-10 15:39:18.731342462 -0400
++++ nlopt-2.4.1.new/api/optimize.c	2014-03-10 16:19:31.731146017 -0400
 @@ -112,7 +112,7 @@ static nlopt_result initial_step(nlopt_o
       if (!opt->dx) {
  	  freedx = 1;
@@ -95,7 +95,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  
       /* reset stopping flag */
       nlopt_set_force_stop(opt, 0);
-@@ -398,9 +398,14 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -398,9 +398,16 @@ static nlopt_result nlopt_optimize_(nlop
       nlopt_srand_time_default(); /* default is non-deterministic */
  
       /* check bound constraints */
@@ -105,15 +105,17 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
 +     for (i = 0; i < n; ++i) {
 +       if (lb[i] > ub[i] || x[i] < lb[i] || x[i] > ub[i]) {
 +	 char msg[255];
-+	 snprintf( msg, 255, "bounds error: i=%d x=%f b:[%f,%f]",
-+		   i, x[i], lb[i], ub[i] );
++	 snprintf( msg, 255, "bounds error: i=%d x=%f b:[%f,%f] {%d, %d}",
++		   i, x[i], lb[i], ub[i],
++		   x[i] - lb[i],
++		   ub[i] - x[i]);
 +	 RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, msg);
 +       }
 +     }
  
       stop.n = n;
       stop.minf_max = opt->stopval;
-@@ -418,7 +423,7 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -418,7 +425,7 @@ static nlopt_result nlopt_optimize_(nlop
  	 case NLOPT_GN_DIRECT:
  	 case NLOPT_GN_DIRECT_L: 
  	 case NLOPT_GN_DIRECT_L_RAND: 
@@ -122,7 +124,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      return cdirect(ni, f, f_data, 
  			     lb, ub, x, minf, &stop, 0.0, 
  			     (algorithm != NLOPT_GN_DIRECT)
-@@ -430,7 +435,7 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -430,7 +437,7 @@ static nlopt_result nlopt_optimize_(nlop
  	 case NLOPT_GN_DIRECT_NOSCAL:
  	 case NLOPT_GN_DIRECT_L_NOSCAL: 
  	 case NLOPT_GN_DIRECT_L_RAND_NOSCAL: 
@@ -131,7 +133,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      return cdirect_unscaled(ni, f, f_data, lb, ub, x, minf, 
  				      &stop, 0.0, 
  				      (algorithm != NLOPT_GN_DIRECT)
-@@ -440,11 +445,11 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -440,11 +447,11 @@ static nlopt_result nlopt_optimize_(nlop
  	 case NLOPT_GN_ORIG_DIRECT:
  	 case NLOPT_GN_ORIG_DIRECT_L: {
  	      direct_return_code dret;
@@ -145,7 +147,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      dret = direct_optimize(f_direct, opt, ni, lb, ub, x, minf,
  				     stop.maxeval, -1,
  				     stop.start, stop.maxtime,
-@@ -459,13 +464,17 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -459,13 +466,17 @@ static nlopt_result nlopt_optimize_(nlop
  	      free(opt->work); opt->work = NULL;
  	      switch (dret) {
  		  case DIRECT_INVALID_BOUNDS:
@@ -165,7 +167,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  		  case DIRECT_MAXFEVAL_EXCEEDED:
  		  case DIRECT_MAXITER_EXCEEDED:
  		       return NLOPT_MAXEVAL_REACHED;
-@@ -477,9 +486,9 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -477,9 +488,9 @@ static nlopt_result nlopt_optimize_(nlop
  		  case DIRECT_SIGMATOL:
  		       return NLOPT_XTOL_REACHED;
  		  case DIRECT_OUT_OF_MEMORY:
@@ -177,7 +179,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      }
  	      break;
  	 }
-@@ -565,10 +574,10 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -565,10 +576,10 @@ static nlopt_result nlopt_optimize_(nlop
  	 case NLOPT_GD_MLSL_LDS: {
  	      nlopt_opt local_opt = opt->local_opt;
  	      nlopt_result ret;
@@ -190,7 +192,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      if (!local_opt) { /* default */
  		   nlopt_algorithm local_alg = (algorithm == NLOPT_GN_MLSL ||
  						algorithm == NLOPT_GN_MLSL_LDS)
-@@ -581,7 +590,7 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -581,7 +592,7 @@ static nlopt_result nlopt_optimize_(nlop
  				     algorithm == NLOPT_GN_MLSL_LDS)
  			     ? NLOPT_LN_COBYLA : NLOPT_LD_MMA;
  		   local_opt = nlopt_create(local_alg, n);
@@ -199,7 +201,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  		   nlopt_set_ftol_rel(local_opt, opt->ftol_rel);
  		   nlopt_set_ftol_abs(local_opt, opt->ftol_abs);
  		   nlopt_set_xtol_rel(local_opt, opt->xtol_rel);
-@@ -638,7 +647,7 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -638,7 +649,7 @@ static nlopt_result nlopt_optimize_(nlop
  	      if (!opt->dx) {
  		   freedx = 1;
  		   if (nlopt_set_default_initial_step(opt, x) != NLOPT_SUCCESS)
@@ -208,7 +210,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      }
  	      return cobyla_minimize(n, f, f_data, 
  				     opt->m, opt->fc,
-@@ -671,7 +680,7 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -671,7 +682,7 @@ static nlopt_result nlopt_optimize_(nlop
  	      if (!opt->dx) {
  		   freedx = 1;
  		   if (nlopt_set_default_initial_step(opt, x) != NLOPT_SUCCESS)
@@ -217,7 +219,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	      }
  	      ret = bobyqa(ni, 2*n+1, x, lb, ub, opt->dx,
  			   &stop, minf, opt->f, opt->f_data);
-@@ -758,7 +767,7 @@ static nlopt_result nlopt_optimize_(nlop
+@@ -758,7 +769,7 @@ static nlopt_result nlopt_optimize_(nlop
  				 lb, ub, x, minf, &stop);
  				     
  	 default:
@@ -226,7 +228,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
       }
  
       return NLOPT_SUCCESS; /* never reached */
-@@ -802,7 +811,7 @@ NLOPT_STDCALL nlopt_optimize(nlopt_opt o
+@@ -802,7 +813,7 @@ NLOPT_STDCALL nlopt_optimize(nlopt_opt o
       int maximize;
       nlopt_result ret;
  
@@ -235,7 +237,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
       f = opt->f; f_data = opt->f_data; pre = opt->pre;
  
       /* for maximizing, just minimize the f_max wrapper, which 
-@@ -819,7 +828,7 @@ NLOPT_STDCALL nlopt_optimize(nlopt_opt o
+@@ -819,7 +830,7 @@ NLOPT_STDCALL nlopt_optimize(nlopt_opt o
  	  nlopt_opt elim_opt = opt;
  	  if (elimdim_wrapcheck(opt)) {
  	       elim_opt = elimdim_create(opt);
@@ -244,7 +246,7 @@ diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
  	       elimdim_shrink(opt->n, x, opt->lb, opt->ub);
  	  }
  
-@@ -851,7 +860,7 @@ nlopt_result nlopt_optimize_limited(nlop
+@@ -851,7 +862,7 @@ nlopt_result nlopt_optimize_limited(nlop
       double save_maxtime;
       nlopt_result ret;
  
