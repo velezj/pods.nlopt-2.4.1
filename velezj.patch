@@ -74,6 +74,176 @@ diff -rupN nlopt-2.4.1/api/nlopt.h nlopt-2.4.1.new/api/nlopt.h
  /*************************** OBJECT-ORIENTED API **************************/
  /* The style here is that we create an nlopt_opt "object" (an opaque pointer),
     then set various optimization parameters, and then execute the
+diff -rupN nlopt-2.4.1/api/optimize.c nlopt-2.4.1.new/api/optimize.c
+--- nlopt-2.4.1/api/optimize.c	2013-08-27 12:52:24.000000000 -0400
++++ nlopt-2.4.1.new/api/optimize.c	2014-03-10 14:41:49.782831071 -0400
+@@ -112,7 +112,7 @@ static nlopt_result initial_step(nlopt_o
+      if (!opt->dx) {
+ 	  freedx = 1;
+ 	  if (nlopt_set_default_initial_step(opt, x) != NLOPT_SUCCESS)
+-	       return NLOPT_OUT_OF_MEMORY;
++	    RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!" );
+      }
+ 
+      *step = HUGE_VAL;
+@@ -374,7 +374,7 @@ static nlopt_result nlopt_optimize_(nlop
+      nlopt_stopping stop;
+ 
+      if (!opt || !x || !minf || !opt->f
+-	 || opt->maximize) return NLOPT_INVALID_ARGS;
++	 || opt->maximize) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "nlopt not setup properly!" );
+ 
+      /* reset stopping flag */
+      nlopt_set_force_stop(opt, 0);
+@@ -400,7 +400,7 @@ static nlopt_result nlopt_optimize_(nlop
+      /* check bound constraints */
+      for (i = 0; i < n; ++i)
+ 	  if (lb[i] > ub[i] || x[i] < lb[i] || x[i] > ub[i])
+-	       return NLOPT_INVALID_ARGS;
++	    RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "bounds do not make sense or initial outside of bounds!");
+ 
+      stop.n = n;
+      stop.minf_max = opt->stopval;
+@@ -418,7 +418,7 @@ static nlopt_result nlopt_optimize_(nlop
+ 	 case NLOPT_GN_DIRECT:
+ 	 case NLOPT_GN_DIRECT_L: 
+ 	 case NLOPT_GN_DIRECT_L_RAND: 
+-	      if (!finite_domain(n, lb, ub)) return NLOPT_INVALID_ARGS;
++	   if (!finite_domain(n, lb, ub)) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS,"infinite domain!");
+ 	      return cdirect(ni, f, f_data, 
+ 			     lb, ub, x, minf, &stop, 0.0, 
+ 			     (algorithm != NLOPT_GN_DIRECT)
+@@ -430,7 +430,7 @@ static nlopt_result nlopt_optimize_(nlop
+ 	 case NLOPT_GN_DIRECT_NOSCAL:
+ 	 case NLOPT_GN_DIRECT_L_NOSCAL: 
+ 	 case NLOPT_GN_DIRECT_L_RAND_NOSCAL: 
+-	      if (!finite_domain(n, lb, ub)) return NLOPT_INVALID_ARGS;
++	   if (!finite_domain(n, lb, ub)) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "infinite domain!");
+ 	      return cdirect_unscaled(ni, f, f_data, lb, ub, x, minf, 
+ 				      &stop, 0.0, 
+ 				      (algorithm != NLOPT_GN_DIRECT)
+@@ -440,11 +440,11 @@ static nlopt_result nlopt_optimize_(nlop
+ 	 case NLOPT_GN_ORIG_DIRECT:
+ 	 case NLOPT_GN_ORIG_DIRECT_L: {
+ 	      direct_return_code dret;
+-	      if (!finite_domain(n, lb, ub)) return NLOPT_INVALID_ARGS;
++	      if (!finite_domain(n, lb, ub)) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "inifnite domain" );
+ 	      opt->work = malloc(sizeof(double) *
+ 				 nlopt_max_constraint_dim(opt->m,
+ 							  opt->fc));
+-	      if (!opt->work) return NLOPT_OUT_OF_MEMORY;
++	      if (!opt->work) RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!" );
+ 	      dret = direct_optimize(f_direct, opt, ni, lb, ub, x, minf,
+ 				     stop.maxeval, -1,
+ 				     stop.start, stop.maxtime,
+@@ -459,13 +459,17 @@ static nlopt_result nlopt_optimize_(nlop
+ 	      free(opt->work); opt->work = NULL;
+ 	      switch (dret) {
+ 		  case DIRECT_INVALID_BOUNDS:
++	            RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "invalid bounds!");
+ 		  case DIRECT_MAXFEVAL_TOOBIG:
++		    RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "max fval too big!");
+ 		  case DIRECT_INVALID_ARGS:
+-		       return NLOPT_INVALID_ARGS;
++		    RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "direct: invalid args" );
+ 		  case DIRECT_INIT_FAILED:
++		    RETURN_NLOPT_ERR( NLOPT_FAILURE, "init failed!");
+ 		  case DIRECT_SAMPLEPOINTS_FAILED:
++		    RETURN_NLOPT_ERR( NLOPT_FAILURE, "sample points failed!");
+ 		  case DIRECT_SAMPLE_FAILED:
+-		       return NLOPT_FAILURE;
++		    RETURN_NLOPT_ERR( NLOPT_FAILURE, "sample failed!");
+ 		  case DIRECT_MAXFEVAL_EXCEEDED:
+ 		  case DIRECT_MAXITER_EXCEEDED:
+ 		       return NLOPT_MAXEVAL_REACHED;
+@@ -477,9 +481,9 @@ static nlopt_result nlopt_optimize_(nlop
+ 		  case DIRECT_SIGMATOL:
+ 		       return NLOPT_XTOL_REACHED;
+ 		  case DIRECT_OUT_OF_MEMORY:
+-		       return NLOPT_OUT_OF_MEMORY;
++		    RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!" );
+ 		  case DIRECT_FORCED_STOP:
+-		       return NLOPT_FORCED_STOP;
++		    RETURN_NLOPT_ERR( NLOPT_FORCED_STOP, "forced!");
+ 	      }
+ 	      break;
+ 	 }
+@@ -565,10 +569,10 @@ static nlopt_result nlopt_optimize_(nlop
+ 	 case NLOPT_GD_MLSL_LDS: {
+ 	      nlopt_opt local_opt = opt->local_opt;
+ 	      nlopt_result ret;
+-	      if (!finite_domain(n, lb, ub)) return NLOPT_INVALID_ARGS;
++	      if (!finite_domain(n, lb, ub)) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "inifninte domain" );
+ 	      if (!local_opt && (algorithm == NLOPT_G_MLSL 
+ 				 || algorithm == NLOPT_G_MLSL_LDS))
+-		   return NLOPT_INVALID_ARGS;
++		RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "bad local optimizer" );
+ 	      if (!local_opt) { /* default */
+ 		   nlopt_algorithm local_alg = (algorithm == NLOPT_GN_MLSL ||
+ 						algorithm == NLOPT_GN_MLSL_LDS)
+@@ -581,7 +585,7 @@ static nlopt_result nlopt_optimize_(nlop
+ 				     algorithm == NLOPT_GN_MLSL_LDS)
+ 			     ? NLOPT_LN_COBYLA : NLOPT_LD_MMA;
+ 		   local_opt = nlopt_create(local_alg, n);
+-		   if (!local_opt) return NLOPT_FAILURE;
++		   if (!local_opt) RETURN_NLOPT_ERR( NLOPT_FAILURE, "could not creat local optimizer" );
+ 		   nlopt_set_ftol_rel(local_opt, opt->ftol_rel);
+ 		   nlopt_set_ftol_abs(local_opt, opt->ftol_abs);
+ 		   nlopt_set_xtol_rel(local_opt, opt->xtol_rel);
+@@ -638,7 +642,7 @@ static nlopt_result nlopt_optimize_(nlop
+ 	      if (!opt->dx) {
+ 		   freedx = 1;
+ 		   if (nlopt_set_default_initial_step(opt, x) != NLOPT_SUCCESS)
+-			return NLOPT_OUT_OF_MEMORY;
++		     RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!" );
+ 	      }
+ 	      return cobyla_minimize(n, f, f_data, 
+ 				     opt->m, opt->fc,
+@@ -671,7 +675,7 @@ static nlopt_result nlopt_optimize_(nlop
+ 	      if (!opt->dx) {
+ 		   freedx = 1;
+ 		   if (nlopt_set_default_initial_step(opt, x) != NLOPT_SUCCESS)
+-			return NLOPT_OUT_OF_MEMORY;
++		     RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!" );
+ 	      }
+ 	      ret = bobyqa(ni, 2*n+1, x, lb, ub, opt->dx,
+ 			   &stop, minf, opt->f, opt->f_data);
+@@ -758,7 +762,7 @@ static nlopt_result nlopt_optimize_(nlop
+ 				 lb, ub, x, minf, &stop);
+ 				     
+ 	 default:
+-	      return NLOPT_INVALID_ARGS;
++	   RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "bad optimization algorithm choice: unknown!" );
+      }
+ 
+      return NLOPT_SUCCESS; /* never reached */
+@@ -802,7 +806,7 @@ NLOPT_STDCALL nlopt_optimize(nlopt_opt o
+      int maximize;
+      nlopt_result ret;
+ 
+-     if (!opt || !opt_f || !opt->f) return NLOPT_INVALID_ARGS;
++     if (!opt || !opt_f || !opt->f) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "optimizer not setup correctly" );
+      f = opt->f; f_data = opt->f_data; pre = opt->pre;
+ 
+      /* for maximizing, just minimize the f_max wrapper, which 
+@@ -819,7 +823,7 @@ NLOPT_STDCALL nlopt_optimize(nlopt_opt o
+ 	  nlopt_opt elim_opt = opt;
+ 	  if (elimdim_wrapcheck(opt)) {
+ 	       elim_opt = elimdim_create(opt);
+-	       if (!elim_opt) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++	       if (!elim_opt) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!" ); goto done; }
+ 	       elimdim_shrink(opt->n, x, opt->lb, opt->ub);
+ 	  }
+ 
+@@ -851,7 +855,7 @@ nlopt_result nlopt_optimize_limited(nlop
+      double save_maxtime;
+      nlopt_result ret;
+ 
+-     if (!opt) return NLOPT_INVALID_ARGS;
++     if (!opt) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "optimizer not set up (null!)" );
+ 
+      save_maxeval = nlopt_get_maxeval(opt);
+      save_maxtime = nlopt_get_maxtime(opt);
 diff -rupN nlopt-2.4.1/bobyqa/bobyqa.c nlopt-2.4.1.new/bobyqa/bobyqa.c
 --- nlopt-2.4.1/bobyqa/bobyqa.c	2013-03-28 10:29:04.000000000 -0400
 +++ nlopt-2.4.1.new/bobyqa/bobyqa.c	2014-03-10 14:09:39.630044516 -0400
