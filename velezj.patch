@@ -39,184 +39,10 @@ diff -rupN nlopt-2.4.1/api/general.c nlopt-2.4.1.new/api/general.c
 +}
 +
 +/*************************************************************************/
-diff -rupN nlopt-2.4.1/api/general.c~ nlopt-2.4.1.new/api/general.c~
---- nlopt-2.4.1/api/general.c~	1969-12-31 19:00:00.000000000 -0500
-+++ nlopt-2.4.1.new/api/general.c~	2014-03-10 12:46:54.961768610 -0400
-@@ -0,0 +1,170 @@
-+/* Copyright (c) 2007-2012 Massachusetts Institute of Technology
-+ *
-+ * Permission is hereby granted, free of charge, to any person obtaining
-+ * a copy of this software and associated documentation files (the
-+ * "Software"), to deal in the Software without restriction, including
-+ * without limitation the rights to use, copy, modify, merge, publish,
-+ * distribute, sublicense, and/or sell copies of the Software, and to
-+ * permit persons to whom the Software is furnished to do so, subject to
-+ * the following conditions:
-+ * 
-+ * The above copyright notice and this permission notice shall be
-+ * included in all copies or substantial portions of the Software.
-+ * 
-+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
-+ */
-+
-+#include <math.h>
-+#include <float.h>
-+
-+#include "nlopt-internal.h"
-+
-+/*************************************************************************/
-+
-+int nlopt_isinf(double x) {
-+     return fabs(x) >= HUGE_VAL * 0.99
-+#ifdef HAVE_ISINF
-+	  || isinf(x)
-+#endif
-+	  ;
-+}
-+/*************************************************************************/
-+
-+void NLOPT_STDCALL nlopt_version(int *major, int *minor, int *bugfix)
-+{
-+     *major = MAJOR_VERSION;
-+     *minor = MINOR_VERSION;
-+     *bugfix = BUGFIX_VERSION;
-+}
-+
-+/*************************************************************************/
-+
-+static const char nlopt_algorithm_names[NLOPT_NUM_ALGORITHMS][256] = {
-+     "DIRECT (global, no-derivative)",
-+     "DIRECT-L (global, no-derivative)",
-+     "Randomized DIRECT-L (global, no-derivative)",
-+     "Unscaled DIRECT (global, no-derivative)",
-+     "Unscaled DIRECT-L (global, no-derivative)",
-+     "Unscaled Randomized DIRECT-L (global, no-derivative)",
-+     "Original DIRECT version (global, no-derivative)",
-+     "Original DIRECT-L version (global, no-derivative)",
-+#ifdef WITH_CXX
-+     "StoGO (global, derivative-based)",
-+     "StoGO with randomized search (global, derivative-based)",
-+#else
-+     "StoGO (NOT COMPILED)",
-+     "StoGO randomized (NOT COMPILED)",
-+#endif
-+     "original L-BFGS code by Nocedal et al. (NOT COMPILED)",
-+     "Limited-memory BFGS (L-BFGS) (local, derivative-based)",
-+     "Principal-axis, praxis (local, no-derivative)",
-+     "Limited-memory variable-metric, rank 1 (local, derivative-based)",
-+     "Limited-memory variable-metric, rank 2 (local, derivative-based)",
-+     "Truncated Newton (local, derivative-based)",
-+     "Truncated Newton with restarting (local, derivative-based)",
-+     "Preconditioned truncated Newton (local, derivative-based)",
-+     "Preconditioned truncated Newton with restarting (local, derivative-based)",
-+     "Controlled random search (CRS2) with local mutation (global, no-derivative)",
-+     "Multi-level single-linkage (MLSL), random (global, no-derivative)",
-+     "Multi-level single-linkage (MLSL), random (global, derivative)",
-+     "Multi-level single-linkage (MLSL), quasi-random (global, no-derivative)",
-+     "Multi-level single-linkage (MLSL), quasi-random (global, derivative)",
-+     "Method of Moving Asymptotes (MMA) (local, derivative)",
-+     "COBYLA (Constrained Optimization BY Linear Approximations) (local, no-derivative)",
-+     "NEWUOA unconstrained optimization via quadratic models (local, no-derivative)",
-+     "Bound-constrained optimization via NEWUOA-based quadratic models (local, no-derivative)",
-+     "Nelder-Mead simplex algorithm (local, no-derivative)",
-+     "Sbplx variant of Nelder-Mead (re-implementation of Rowan's Subplex) (local, no-derivative)",
-+     "Augmented Lagrangian method (local, no-derivative)",
-+     "Augmented Lagrangian method (local, derivative)",
-+     "Augmented Lagrangian method for equality constraints (local, no-derivative)",
-+     "Augmented Lagrangian method for equality constraints (local, derivative)",
-+     "BOBYQA bound-constrained optimization via quadratic models (local, no-derivative)",
-+     "ISRES evolutionary constrained optimization (global, no-derivative)",
-+     "Augmented Lagrangian method (needs sub-algorithm)",
-+     "Augmented Lagrangian method for equality constraints (needs sub-algorithm)",
-+     "Multi-level single-linkage (MLSL), random (global, needs sub-algorithm)",
-+     "Multi-level single-linkage (MLSL), quasi-random (global, needs sub-algorithm)",
-+     "Sequential Quadratic Programming (SQP) (local, derivative)",
-+     "CCSA (Conservative Convex Separable Approximations) with simple quadratic approximations (local, derivative)",
-+     "ESCH evolutionary strategy"
-+};
-+
-+const char * NLOPT_STDCALL nlopt_algorithm_name(nlopt_algorithm a)
-+{
-+     if (((int) a) < 0 || a >= NLOPT_NUM_ALGORITHMS) return "UNKNOWN";
-+     return nlopt_algorithm_names[a];
-+}
-+
-+/*************************************************************************/
-+/* get thread id, if possible, for use in nlopt_srand_time to ensure that
-+   different threads have a different default seed even if they are called
-+   simultaneously */
-+
-+#if defined(_WIN32) || defined(__WIN32__)
-+#  include <windows.h>
-+#  define my_gettid GetCurrentThreadId
-+#elif defined(HAVE_GETTID_SYSCALL)
-+#  include <unistd.h>
-+#  include <sys/syscall.h>
-+#  define my_gettid() syscall(SYS_gettid)
-+#elif defined(HAVE_GETPID)
-+#  include <sys/types.h>
-+#  include <unistd.h>
-+#  define my_gettid getpid
-+#else
-+#  define my_gettid() (0)
-+#endif
-+
-+/*************************************************************************/
-+
-+static THREADLOCAL int nlopt_srand_called = 0;
-+void NLOPT_STDCALL nlopt_srand(unsigned long seed) {
-+     nlopt_srand_called = 1;
-+     nlopt_init_genrand(seed);
-+}
-+
-+void NLOPT_STDCALL nlopt_srand_time(void) {
-+     nlopt_srand(nlopt_time_seed() + my_gettid() * 314159);
-+}
-+
-+void nlopt_srand_time_default(void) {
-+     if (!nlopt_srand_called) nlopt_srand_time();
-+}
-+
-+/*************************************************************************/
-+
-+char[255] _error_file         ;
-+char[255] _error_reason;
-+int _error_line;
-+nlopt_result _error_result;
-+
-+void nlopt_last_error_info( nlopt_result* res,
-+			    char* reason,
-+			    int* line,
-+			    char* file )
-+{
-+  *res = _error_result;
-+  reason = _error_reason;
-+  *line = _error_line;
-+  file = _error_file;
-+}
-+
-+void nlopt_set_error_info( nlopt_result res,
-+			   char* reason,
-+			   int line,
-+			   char* file )
-+{
-+  _error_result = res;
-+  _error_line = line;
-+  snprintf( _error_reason, 255, "~s", reason ); 
-+  snprintf( _error_file, 255, "~s", file );
-+}
-+
-+/*************************************************************************/
 diff -rupN nlopt-2.4.1/api/nlopt.h nlopt-2.4.1.new/api/nlopt.h
 --- nlopt-2.4.1/api/nlopt.h	2013-11-19 15:21:57.000000000 -0500
-+++ nlopt-2.4.1.new/api/nlopt.h	2014-03-10 12:46:54.961768610 -0400
-@@ -177,6 +177,16 @@ NLOPT_EXTERN(void) nlopt_srand_time(void
++++ nlopt-2.4.1.new/api/nlopt.h	2014-03-10 14:21:17.068012893 -0400
+@@ -177,6 +177,31 @@ NLOPT_EXTERN(void) nlopt_srand_time(void
  
  NLOPT_EXTERN(void) nlopt_version(int *major, int *minor, int *bugfix);
  
@@ -229,390 +55,314 @@ diff -rupN nlopt-2.4.1/api/nlopt.h nlopt-2.4.1.new/api/nlopt.h
 +			    int* line,
 +			    char* file );
 +
++#define RETURN_NLOPT_ERR( err, reason )				\
++  do {								\
++  nlopt_set_error_info( err, reason, __LINE__, __FILE__ );	\
++  return err;							\
++  } while(0)
++
++#define NLOPT_ERR( store, err, reason )				\
++  do {								\
++  nlopt_set_error_info( err, reason, __LINE__, __FILE__ );	\
++  store = err;							\
++  } while(0)
++
++
++  
++
 +
  /*************************** OBJECT-ORIENTED API **************************/
  /* The style here is that we create an nlopt_opt "object" (an opaque pointer),
     then set various optimization parameters, and then execute the
-diff -rupN nlopt-2.4.1/api/nlopt.h~ nlopt-2.4.1.new/api/nlopt.h~
---- nlopt-2.4.1/api/nlopt.h~	1969-12-31 19:00:00.000000000 -0500
-+++ nlopt-2.4.1.new/api/nlopt.h~	2014-03-10 12:46:54.961768610 -0400
-@@ -0,0 +1,379 @@
-+/* Copyright (c) 2007-2012 Massachusetts Institute of Technology
-+ *
-+ * Permission is hereby granted, free of charge, to any person obtaining
-+ * a copy of this software and associated documentation files (the
-+ * "Software"), to deal in the Software without restriction, including
-+ * without limitation the rights to use, copy, modify, merge, publish,
-+ * distribute, sublicense, and/or sell copies of the Software, and to
-+ * permit persons to whom the Software is furnished to do so, subject to
-+ * the following conditions:
-+ * 
-+ * The above copyright notice and this permission notice shall be
-+ * included in all copies or substantial portions of the Software.
-+ * 
-+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
-+ */
-+
-+#ifndef NLOPT_H
-+#define NLOPT_H
-+
-+#include <stddef.h> /* for ptrdiff_t and size_t */
-+
-+/* Change 0 to 1 to use stdcall convention under Win32 */
-+#if 0 && (defined(_WIN32) || defined(__WIN32__))
-+#  if defined(__GNUC__)
-+#    define NLOPT_STDCALL __attribute__((stdcall))
-+#  elif defined(_MSC_VER) || defined(_ICC) || defined(_STDCALL_SUPPORTED)
-+#    define NLOPT_STDCALL __stdcall
-+#  else
-+#    define NLOPT_STDCALL
-+#  endif
-+#else
-+#  define NLOPT_STDCALL
-+#endif
-+
-+/* for Windows compilers, you should add a line
-+           #define NLOPT_DLL
-+   when using NLopt from a DLL, in order to do the proper
-+   Windows importing nonsense. */
-+#if defined(NLOPT_DLL) && (defined(_WIN32) || defined(__WIN32__)) && !defined(__LCC__)
-+/* annoying Windows syntax for calling functions in a DLL */
-+#  if defined(NLOPT_DLL_EXPORT)
-+#    define NLOPT_EXTERN(T) extern __declspec(dllexport) T NLOPT_STDCALL
-+#  else
-+#    define NLOPT_EXTERN(T) extern __declspec(dllimport) T NLOPT_STDCALL
-+#  endif
-+#else
-+#  define NLOPT_EXTERN(T) extern T NLOPT_STDCALL
-+#endif
-+
-+#ifdef __cplusplus
-+extern "C"
-+{
-+#endif /* __cplusplus */
-+
-+typedef double (*nlopt_func)(unsigned n, const double *x,
-+			     double *gradient, /* NULL if not needed */
-+			     void *func_data);
-+
-+typedef void (*nlopt_mfunc)(unsigned m, double *result,
-+			    unsigned n, const double *x,
-+			     double *gradient, /* NULL if not needed */
-+			     void *func_data);
-+
-+/* A preconditioner, which preconditions v at x to return vpre. 
-+   (The meaning of "preconditioning" is algorithm-dependent.) */
-+typedef void (*nlopt_precond)(unsigned n, const double *x, const double *v,
-+			      double *vpre, void *data);
-+
-+typedef enum {
-+     /* Naming conventions:
-+
-+        NLOPT_{G/L}{D/N}_* 
-+	    = global/local derivative/no-derivative optimization, 
-+              respectively 
-+ 
-+	*_RAND algorithms involve some randomization.
-+
-+	*_NOSCAL algorithms are *not* scaled to a unit hypercube
-+	         (i.e. they are sensitive to the units of x)
-+	*/
-+
-+     NLOPT_GN_DIRECT = 0,
-+     NLOPT_GN_DIRECT_L,
-+     NLOPT_GN_DIRECT_L_RAND,
-+     NLOPT_GN_DIRECT_NOSCAL,
-+     NLOPT_GN_DIRECT_L_NOSCAL,
-+     NLOPT_GN_DIRECT_L_RAND_NOSCAL,
-+
-+     NLOPT_GN_ORIG_DIRECT,
-+     NLOPT_GN_ORIG_DIRECT_L,
-+
-+     NLOPT_GD_STOGO,
-+     NLOPT_GD_STOGO_RAND,
-+
-+     NLOPT_LD_LBFGS_NOCEDAL,
-+
-+     NLOPT_LD_LBFGS,
-+
-+     NLOPT_LN_PRAXIS,
-+
-+     NLOPT_LD_VAR1,
-+     NLOPT_LD_VAR2,
-+
-+     NLOPT_LD_TNEWTON,
-+     NLOPT_LD_TNEWTON_RESTART,
-+     NLOPT_LD_TNEWTON_PRECOND,
-+     NLOPT_LD_TNEWTON_PRECOND_RESTART,
-+
-+     NLOPT_GN_CRS2_LM,
-+
-+     NLOPT_GN_MLSL,
-+     NLOPT_GD_MLSL,
-+     NLOPT_GN_MLSL_LDS,
-+     NLOPT_GD_MLSL_LDS,
-+
-+     NLOPT_LD_MMA,
-+
-+     NLOPT_LN_COBYLA,
-+
-+     NLOPT_LN_NEWUOA,
-+     NLOPT_LN_NEWUOA_BOUND,
-+
-+     NLOPT_LN_NELDERMEAD,
-+     NLOPT_LN_SBPLX,
-+
-+     NLOPT_LN_AUGLAG,
-+     NLOPT_LD_AUGLAG,
-+     NLOPT_LN_AUGLAG_EQ,
-+     NLOPT_LD_AUGLAG_EQ,
-+
-+     NLOPT_LN_BOBYQA,
-+
-+     NLOPT_GN_ISRES,
-+
-+     /* new variants that require local_optimizer to be set,
-+	not with older constants for backwards compatibility */
-+     NLOPT_AUGLAG,
-+     NLOPT_AUGLAG_EQ,
-+     NLOPT_G_MLSL,
-+     NLOPT_G_MLSL_LDS,
-+
-+     NLOPT_LD_SLSQP,
-+
-+     NLOPT_LD_CCSAQ,
-+
-+     NLOPT_GN_ESCH,
-+
-+     NLOPT_NUM_ALGORITHMS /* not an algorithm, just the number of them */
-+} nlopt_algorithm;
-+
-+NLOPT_EXTERN(const char *) nlopt_algorithm_name(nlopt_algorithm a);
-+
-+typedef enum {
-+     NLOPT_FAILURE = -1, /* generic failure code */
-+     NLOPT_INVALID_ARGS = -2,
-+     NLOPT_OUT_OF_MEMORY = -3,
-+     NLOPT_ROUNDOFF_LIMITED = -4,
-+     NLOPT_FORCED_STOP = -5,
-+     NLOPT_SUCCESS = 1, /* generic success code */
-+     NLOPT_STOPVAL_REACHED = 2,
-+     NLOPT_FTOL_REACHED = 3,
-+     NLOPT_XTOL_REACHED = 4,
-+     NLOPT_MAXEVAL_REACHED = 5,
-+     NLOPT_MAXTIME_REACHED = 6
-+} nlopt_result;
-+
-+#define NLOPT_MINF_MAX_REACHED NLOPT_STOPVAL_REACHED
-+
-+NLOPT_EXTERN(void) nlopt_srand(unsigned long seed);
-+NLOPT_EXTERN(void) nlopt_srand_time(void);
-+
-+NLOPT_EXTERN(void) nlopt_version(int *major, int *minor, int *bugfix);
-+
-+/*************************** OBJECT-ORIENTED API **************************/
-+/* The style here is that we create an nlopt_opt "object" (an opaque pointer),
-+   then set various optimization parameters, and then execute the
-+   algorithm.  In this way, we can add more and more optimization parameters
-+   (including algorithm-specific ones) without breaking backwards
-+   compatibility, having functions with zillions of parameters, or
-+   relying non-reentrantly on global variables.*/
-+
-+struct nlopt_opt_s; /* opaque structure, defined internally */
-+typedef struct nlopt_opt_s *nlopt_opt;
-+
-+/* the only immutable parameters of an optimization are the algorithm and
-+   the dimension n of the problem, since changing either of these could
-+   have side-effects on lots of other parameters */
-+NLOPT_EXTERN(nlopt_opt) nlopt_create(nlopt_algorithm algorithm, unsigned n);
-+NLOPT_EXTERN(void) nlopt_destroy(nlopt_opt opt);
-+NLOPT_EXTERN(nlopt_opt) nlopt_copy(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_optimize(nlopt_opt opt, double *x,
-+					 double *opt_f);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_min_objective(nlopt_opt opt, nlopt_func f, 
-+						  void *f_data);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_max_objective(nlopt_opt opt, nlopt_func f, 
-+						  void *f_data);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_precond_min_objective(nlopt_opt opt, nlopt_func f, nlopt_precond pre, void *f_data);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_precond_max_objective(nlopt_opt opt, nlopt_func f, nlopt_precond pre, void *f_data);
-+
-+NLOPT_EXTERN(nlopt_algorithm) nlopt_get_algorithm(const nlopt_opt opt);
-+NLOPT_EXTERN(unsigned) nlopt_get_dimension(const nlopt_opt opt);
-+
-+/* constraints: */
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_lower_bounds(nlopt_opt opt, 
-+						 const double *lb);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_lower_bounds1(nlopt_opt opt, double lb);
-+NLOPT_EXTERN(nlopt_result) nlopt_get_lower_bounds(const nlopt_opt opt, 
-+						 double *lb);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_upper_bounds(nlopt_opt opt, 
-+						 const double *ub);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_upper_bounds1(nlopt_opt opt, double ub);
-+NLOPT_EXTERN(nlopt_result) nlopt_get_upper_bounds(const nlopt_opt opt,
-+						 double *ub);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_remove_inequality_constraints(nlopt_opt opt);
-+NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_constraint(nlopt_opt opt,
-+							  nlopt_func fc,
-+							  void *fc_data,
-+							  double tol);
-+NLOPT_EXTERN(nlopt_result) nlopt_add_precond_inequality_constraint(
-+     nlopt_opt opt, nlopt_func fc, nlopt_precond pre, void *fc_data,
-+     double tol);
-+NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_mconstraint(nlopt_opt opt,
-+							    unsigned m,
-+							    nlopt_mfunc fc,
-+							    void *fc_data,
-+							    const double *tol);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_remove_equality_constraints(nlopt_opt opt);
-+NLOPT_EXTERN(nlopt_result) nlopt_add_equality_constraint(nlopt_opt opt,
-+							nlopt_func h,
-+							void *h_data,
-+							double tol);
-+NLOPT_EXTERN(nlopt_result) nlopt_add_precond_equality_constraint(
-+     nlopt_opt opt, nlopt_func h, nlopt_precond pre, void *h_data,
-+     double tol);
-+NLOPT_EXTERN(nlopt_result) nlopt_add_equality_mconstraint(nlopt_opt opt,
-+							  unsigned m,
-+							  nlopt_mfunc h,
-+							  void *h_data,
-+							  const double *tol);
-+
-+/* stopping criteria: */
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_stopval(nlopt_opt opt, double stopval);
-+NLOPT_EXTERN(double) nlopt_get_stopval(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_ftol_rel(nlopt_opt opt, double tol);
-+NLOPT_EXTERN(double) nlopt_get_ftol_rel(const nlopt_opt opt);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_ftol_abs(nlopt_opt opt, double tol);
-+NLOPT_EXTERN(double) nlopt_get_ftol_abs(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_xtol_rel(nlopt_opt opt, double tol);
-+NLOPT_EXTERN(double) nlopt_get_xtol_rel(const nlopt_opt opt);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_xtol_abs1(nlopt_opt opt, double tol);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_xtol_abs(nlopt_opt opt, const double *tol);
-+NLOPT_EXTERN(nlopt_result) nlopt_get_xtol_abs(const nlopt_opt opt,
-+					     double *tol);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_maxeval(nlopt_opt opt, int maxeval);
-+NLOPT_EXTERN(int) nlopt_get_maxeval(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_maxtime(nlopt_opt opt, double maxtime);
-+NLOPT_EXTERN(double) nlopt_get_maxtime(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_force_stop(nlopt_opt opt);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_force_stop(nlopt_opt opt, int val);
-+NLOPT_EXTERN(int) nlopt_get_force_stop(const nlopt_opt opt);
-+
-+/* more algorithm-specific parameters */
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_local_optimizer(nlopt_opt opt, 
-+						    const nlopt_opt local_opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_population(nlopt_opt opt, unsigned pop);
-+NLOPT_EXTERN(unsigned) nlopt_get_population(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_vector_storage(nlopt_opt opt, unsigned dim);
-+NLOPT_EXTERN(unsigned) nlopt_get_vector_storage(const nlopt_opt opt);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_set_default_initial_step(nlopt_opt opt, 
-+							 const double *x);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_initial_step(nlopt_opt opt, 
-+						 const double *dx);
-+NLOPT_EXTERN(nlopt_result) nlopt_set_initial_step1(nlopt_opt opt, double dx);
-+NLOPT_EXTERN(nlopt_result) nlopt_get_initial_step(const nlopt_opt opt, 
-+						 const double *x, double *dx);
-+
-+/* the following are functions mainly designed to be used internally
-+   by the Fortran and SWIG wrappers, allow us to tel nlopt_destroy and
-+   nlopt_copy to do something to the f_data pointers (e.g. free or
-+   duplicate them, respectively) */
-+typedef void* (*nlopt_munge)(void *p);
-+NLOPT_EXTERN(void) nlopt_set_munge(nlopt_opt opt,
-+				  nlopt_munge munge_on_destroy,
-+				  nlopt_munge munge_on_copy);
-+typedef void* (*nlopt_munge2)(void *p, void *data);
-+NLOPT_EXTERN(void) nlopt_munge_data(nlopt_opt opt,
-+                                    nlopt_munge2 munge, void *data);
-+
-+/*************************** DEPRECATED API **************************/
-+/* The new "object-oriented" API is preferred, since it allows us to
-+   gracefully add new features and algorithm-specific options in a
-+   re-entrant way, and we can automatically assume reasonable defaults
-+   for unspecified parameters. */
-+
-+/* Where possible (e.g. for gcc >= 3.1), enable a compiler warning
-+   for code that uses a deprecated function */
-+#if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__==3 && __GNUC_MINOR__ > 0))
-+#  define NLOPT_DEPRECATED __attribute__((deprecated))
-+#else
-+#  define NLOPT_DEPRECATED 
-+#endif
-+
-+typedef double (*nlopt_func_old)(int n, const double *x,
-+				 double *gradient, /* NULL if not needed */
-+				 void *func_data);
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_minimize(
-+     nlopt_algorithm algorithm,
-+     int n, nlopt_func_old f, void *f_data,
-+     const double *lb, const double *ub, /* bounds */
-+     double *x, /* in: initial guess, out: minimizer */
-+     double *minf, /* out: minimum */
-+     double minf_max, double ftol_rel, double ftol_abs,
-+     double xtol_rel, const double *xtol_abs,
-+     int maxeval, double maxtime) NLOPT_DEPRECATED;
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_minimize_constrained(
-+     nlopt_algorithm algorithm,
-+     int n, nlopt_func_old f, void *f_data,
-+     int m, nlopt_func_old fc, void *fc_data, ptrdiff_t fc_datum_size,
-+     const double *lb, const double *ub, /* bounds */
-+     double *x, /* in: initial guess, out: minimizer */
-+     double *minf, /* out: minimum */
-+     double minf_max, double ftol_rel, double ftol_abs,
-+     double xtol_rel, const double *xtol_abs,
-+     int maxeval, double maxtime) NLOPT_DEPRECATED;
-+
-+NLOPT_EXTERN(nlopt_result) nlopt_minimize_econstrained(
-+     nlopt_algorithm algorithm,
-+     int n, nlopt_func_old f, void *f_data,
-+     int m, nlopt_func_old fc, void *fc_data, ptrdiff_t fc_datum_size,
-+     int p, nlopt_func_old h, void *h_data, ptrdiff_t h_datum_size,
-+     const double *lb, const double *ub, /* bounds */
-+     double *x, /* in: initial guess, out: minimizer */
-+     double *minf, /* out: minimum */
-+     double minf_max, double ftol_rel, double ftol_abs,
-+     double xtol_rel, const double *xtol_abs,
-+     double htol_rel, double htol_abs,
-+     int maxeval, double maxtime) NLOPT_DEPRECATED;
-+
-+NLOPT_EXTERN(void) nlopt_get_local_search_algorithm(nlopt_algorithm *deriv,
-+					     nlopt_algorithm *nonderiv,
-+					     int *maxeval) NLOPT_DEPRECATED;
-+NLOPT_EXTERN(void) nlopt_set_local_search_algorithm(nlopt_algorithm deriv,
-+					     nlopt_algorithm nonderiv,
-+					     int maxeval) NLOPT_DEPRECATED;
-+
-+NLOPT_EXTERN(int) nlopt_get_stochastic_population(void) NLOPT_DEPRECATED;
-+NLOPT_EXTERN(void) nlopt_set_stochastic_population(int pop) NLOPT_DEPRECATED;
-+
-+/*********************************************************************/
-+
-+#ifdef __cplusplus
-+}  /* extern "C" */
-+#endif /* __cplusplus */
-+
-+#endif
+diff -rupN nlopt-2.4.1/bobyqa/bobyqa.c nlopt-2.4.1.new/bobyqa/bobyqa.c
+--- nlopt-2.4.1/bobyqa/bobyqa.c	2013-03-28 10:29:04.000000000 -0400
++++ nlopt-2.4.1.new/bobyqa/bobyqa.c	2014-03-10 14:09:39.630044516 -0400
+@@ -681,7 +681,7 @@ L260:
+ 	if (f < fval[*kopt]) {
+ 	    *kopt = kpt;
+ 	}
+-	if (nlopt_stop_forced(stop)) return NLOPT_FORCED_STOP;
++	if (nlopt_stop_forced(stop)) RETURN_NLOPT_ERR( NLOPT_FORCED_STOP, "forced!");
+ 	else if (f < stop->minf_max) return NLOPT_MINF_MAX_REACHED;
+ 	else if (nlopt_stop_evals(stop)) return NLOPT_MAXEVAL_REACHED;
+ 	else if (nlopt_stop_time(stop)) return NLOPT_MAXTIME_REACHED;
+@@ -1941,7 +1941,7 @@ L50:
+ 	temp = xpt[nf + ipt * xpt_dim1] * xpt[nf + jpt * xpt_dim1];
+ 	hq[ih] = (fbeg - fval[ipt + 1] - fval[jpt + 1] + f) / temp;
+     }
+-    if (nlopt_stop_forced(stop)) return NLOPT_FORCED_STOP;
++    if (nlopt_stop_forced(stop)) RETURN_NLOPT_ERR( NLOPT_FORCED_STOP, "forced!");
+     else if (f < stop->minf_max) return NLOPT_MINF_MAX_REACHED;
+     else if (nlopt_stop_evals(stop)) return NLOPT_MAXEVAL_REACHED;
+     else if (nlopt_stop_time(stop)) return NLOPT_MAXTIME_REACHED;
+@@ -2482,7 +2482,7 @@ L230:
+ 	    }
+ 	    /* Return from BOBYQA because of much cancellation in a
+ 	       denominator. */
+-	    rc = NLOPT_ROUNDOFF_LIMITED;
++	    NLOPT_ERR(rc , NLOPT_ROUNDOFF_LIMITED, "roundoff: denom <= half * (d_1 * d_1)");
+ 	    goto L720;
+ 	}
+ 
+@@ -2545,7 +2545,7 @@ L350:
+ 	    }
+ 	    /* Return from BOBYQA because of much cancellation in a
+ 	       denominator. */
+-	    rc = NLOPT_ROUNDOFF_LIMITED;
++	    NLOPT_ERR(rc , NLOPT_ROUNDOFF_LIMITED, "roundoff: scaden <= half * biglsq" );
+ 	    goto L720;
+ 	}
+     }
+@@ -2574,7 +2574,7 @@ L360:
+ /* L380: */
+     }
+ 
+-    if (nlopt_stop_forced(stop)) rc = NLOPT_FORCED_STOP;
++    if (nlopt_stop_forced(stop)) NLOPT_ERR(rc , NLOPT_FORCED_STOP, "forced!");
+     else if (nlopt_stop_evals(stop)) rc = NLOPT_MAXEVAL_REACHED;
+     else if (nlopt_stop_time(stop)) rc = NLOPT_MAXTIME_REACHED;
+     if (rc != NLOPT_SUCCESS) goto L720;
+@@ -2634,7 +2634,7 @@ L360:
+ 	if (vquad >= zero) {
+ 	  /* Return from BOBYQA because a trust region step has failed
+ 	     to reduce Q. */
+-	  rc = NLOPT_ROUNDOFF_LIMITED; /* or FTOL_REACHED? */
++	  NLOPT_ERR( rc , NLOPT_ROUNDOFF_LIMITED, "roudoff (maybe!): vquad >= 0"); /* or FTOL_REACHED? */
+ 	  goto L720;
+ 	}
+ 	ratio = (f - fopt) / vquad;
+@@ -3095,7 +3095,7 @@ nlopt_result bobyqa(int n, int npt, doub
+     /* SGJ 2010: rescale parameters to make the initial step sizes dx
+                  equal in all directions */
+     s = nlopt_compute_rescaling(U(n), dx);
+-    if (!s) return NLOPT_OUT_OF_MEMORY;
++    if (!s) RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!");
+ 
+     /* this statement must go before goto done, so that --x occurs */
+     nlopt_rescale(U(n), s, x, x); --x;
+@@ -3103,10 +3103,10 @@ nlopt_result bobyqa(int n, int npt, doub
+     xs = (double *) malloc(sizeof(double) * (U(n)));
+ 
+     sxl = nlopt_new_rescaled(U(n), s, xl);
+-    if (!sxl) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++    if (!sxl) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+     xl = sxl;
+     sxu = nlopt_new_rescaled(U(n), s, xu);
+-    if (!sxu) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++    if (!sxu) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+     xu = sxu;
+     nlopt_reorder_bounds(n, sxl, sxu);
+ 
+@@ -3197,7 +3197,7 @@ nlopt_result bobyqa(int n, int npt, doub
+     iw = ivl + ndim;
+ 
+     w0 = (double *) malloc(sizeof(double) * U((npt+5)*(npt+n)+3*n*(n+5)/2));
+-    if (!w0) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++    if (!w0) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+     w = w0 - 1;
+ 
+ /*   Return if there is insufficient space between the bounds. Modify the */
+@@ -3214,7 +3214,7 @@ nlopt_result bobyqa(int n, int npt, doub
+ 	if (temp < rhobeg + rhobeg) {
+ 	  /* Return from BOBYQA because one of the differences
+ 	     XU(I)-XL(I)s is less than 2*RHOBEG. */
+-	     ret = NLOPT_INVALID_ARGS;
++	  NLOPT_ERR(ret , NLOPT_INVALID_ARGS, "bobyqa: xu[j] - xl[j] < rhobeg^2 :: insufficient space between bounds need to create the first quadratic model.");
+ 	     goto done;
+ 	}
+ 	jsl = isl + j - 1;
+diff -rupN nlopt-2.4.1/cobyla/cobyla.c nlopt-2.4.1.new/cobyla/cobyla.c
+--- nlopt-2.4.1/cobyla/cobyla.c	2013-03-28 10:29:04.000000000 -0400
++++ nlopt-2.4.1.new/cobyla/cobyla.c	2014-03-10 14:16:16.970561127 -0400
+@@ -197,16 +197,16 @@ nlopt_result cobyla_minimize(unsigned n,
+      s.lb = s.ub = s.xtmp = s.con_tol = s.scale = NULL;
+ 
+      s.scale = nlopt_compute_rescaling(n, dx);
+-     if (!s.scale) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++     if (!s.scale) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+ 
+      s.lb = nlopt_new_rescaled(n, s.scale, lb);
+-     if (!s.lb) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++     if (!s.lb) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+      s.ub = nlopt_new_rescaled(n, s.scale, ub);
+-     if (!s.ub) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++     if (!s.ub) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+      nlopt_reorder_bounds(n, s.lb, s.ub);
+ 
+      s.xtmp = (double *) malloc(sizeof(double) * n);
+-     if (!s.xtmp) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++     if (!s.xtmp) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+ 
+      /* SGJ, 2008: compute rhoend from NLopt stop info */
+      rhobeg = fabs(dx[0] / s.scale[0]);
+@@ -227,7 +227,7 @@ nlopt_result cobyla_minimize(unsigned n,
+      }
+ 
+      s.con_tol = (double *) malloc(sizeof(double) * m);
+-     if (m && !s.con_tol) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++     if (m && !s.con_tol) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+ 
+      for (j = 0; j < m; ++j) s.con_tol[j] = 0;
+      for (j = i = 0; i < s.m_orig; ++i) {
+@@ -389,7 +389,7 @@ nlopt_result cobyla(int n, int m, double
+   if (n < 0 || m < 0)
+   {
+     if (iprint>=1) fprintf(stderr, "cobyla: N<0 or M<0.\n");
+-    return NLOPT_INVALID_ARGS;
++    RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "cobyla: N<0 or M<0" );
+   }
+ 
+   /* workspace allocation */
+@@ -397,14 +397,14 @@ nlopt_result cobyla(int n, int m, double
+   if (w == NULL)
+   {
+     if (iprint>=1) fprintf(stderr, "cobyla: memory allocation error.\n");
+-    return NLOPT_OUT_OF_MEMORY;
++    RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!" );
+   }
+   iact = (int*)malloc(U(m+1)*sizeof(*iact));
+   if (iact == NULL)
+   {
+     if (iprint>=1) fprintf(stderr, "cobyla: memory allocation error.\n");
+     free(w);
+-    return NLOPT_OUT_OF_MEMORY;
++    RETURN_NLOPT_ERR( NLOPT_OUT_OF_MEMORY, "mem!");
+   }
+   
+   /* Parameter adjustments */
+@@ -562,7 +562,7 @@ static nlopt_result cobylb(int *n, int *
+      #*&!%*@ Fortran-66 spaghetti code */
+ 
+ L40:
+-  if (nlopt_stop_forced(stop)) rc = NLOPT_FORCED_STOP;
++  if (nlopt_stop_forced(stop)) NLOPT_ERR(rc , NLOPT_FORCED_STOP, "forced!");
+   else if (stop->nevals > 0) {
+        if (nlopt_stop_evals(stop)) rc = NLOPT_MAXEVAL_REACHED;
+        else if (nlopt_stop_time(stop)) rc = NLOPT_MAXTIME_REACHED;
+@@ -575,7 +575,7 @@ L40:
+     if (*iprint >= 1) {
+       fprintf(stderr, "cobyla: user requested end of minimization.\n");
+     }
+-    rc = NLOPT_FORCED_STOP;
++    NLOPT_ERR(rc , NLOPT_FORCED_STOP, "forced!");
+     goto L600;
+   }
+ 
+@@ -747,7 +747,7 @@ L140:
+     if (*iprint >= 1) {
+       fprintf(stderr, "cobyla: rounding errors are becoming damaging.\n");
+     }
+-    rc = NLOPT_ROUNDOFF_LIMITED;
++    NLOPT_ERR(rc , NLOPT_ROUNDOFF_LIMITED, "roundoff cobyla: error > .1" );
+     goto L600;
+   }
+ 
+@@ -1193,8 +1193,13 @@ L550:
+     }
+     goto L140;
+   }
+-  else /* rho <= rhoend */
+-       rc = rhoend > 0 ? NLOPT_XTOL_REACHED : NLOPT_ROUNDOFF_LIMITED;
++  else /* rho <= rhoend */ {
++    if( rhoend > 0 ) {
++      rc = NLOPT_XTOL_REACHED;
++    } else {
++      NLOPT_ERR( rc,  NLOPT_ROUNDOFF_LIMITED, "roundoff cobyla: rho < rhoend && rhoend <= 0" );
++    } 
++  }
+ 
+ /* Return the best calculated values of the variables. */
+ 
+@@ -1710,7 +1715,7 @@ L340:
+   }
+ 
+   /* SGJ, 2010: check for error here */
+-  if (nlopt_isinf(step)) return NLOPT_ROUNDOFF_LIMITED;
++  if (nlopt_isinf(step)) RETURN_NLOPT_ERR( NLOPT_ROUNDOFF_LIMITED, "roundoff cobyla: isinf(step)" );
+ 
+ /* Set DXNEW to the new variables if STEP is the steplength, and reduce */
+ /* RESMAX to the corresponding maximum residual if stage one is being done. */
+diff -rupN nlopt-2.4.1/mlsl/mlsl.c nlopt-2.4.1.new/mlsl/mlsl.c
+--- nlopt-2.4.1/mlsl/mlsl.c	2013-03-28 10:29:05.000000000 -0400
++++ nlopt-2.4.1.new/mlsl/mlsl.c	2014-03-10 14:02:46.937041486 -0400
+@@ -292,7 +292,7 @@ nlopt_result mlsl_minimize(int n, nlopt_
+ 	  d.N = 4; /* FIXME: what is good number of samples per iteration? */
+      else
+ 	  d.N = Nsamples;
+-     if (d.N < 1) return NLOPT_INVALID_ARGS;
++     if (d.N < 1) RETURN_NLOPT_ERR( NLOPT_INVALID_ARGS, "bad sampler per iteration: d.N < 1" );
+ 
+      d.n = n;
+      d.lb = lb; d.ub = ub;
+@@ -323,7 +323,7 @@ nlopt_result mlsl_minimize(int n, nlopt_
+      
+ 
+      p = alloc_pt(n);
+-     if (!p) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++     if (!p) { NLOPT_ERR(ret, NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+ 
+      /* FIXME: how many sobol points to skip, if any? */
+      nlopt_sobol_skip(d.s, (unsigned) (10*n+d.N), p->x);
+@@ -332,9 +332,9 @@ nlopt_result mlsl_minimize(int n, nlopt_
+      p->f = f(n, x, NULL, f_data);
+      stop->nevals++;
+      if (!rb_tree_insert(&d.pts, (rb_key) p)) { 
+-	  free(p); ret = NLOPT_OUT_OF_MEMORY; 
++       free(p); NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); 
+      }
+-     if (nlopt_stop_forced(stop)) ret = NLOPT_FORCED_STOP;
++     if (nlopt_stop_forced(stop)) NLOPT_ERR(ret , NLOPT_FORCED_STOP, "forced!");
+      else if (nlopt_stop_evals(stop)) ret = NLOPT_MAXEVAL_REACHED;
+      else if (nlopt_stop_time(stop)) ret = NLOPT_MAXTIME_REACHED;
+      else if (p->f < stop->minf_max) ret = NLOPT_MINF_MAX_REACHED;
+@@ -348,7 +348,7 @@ nlopt_result mlsl_minimize(int n, nlopt_
+ 	  /* sampling phase: add random/quasi-random points */
+ 	  for (i = 0; i < d.N && ret == NLOPT_SUCCESS; ++i) {
+ 	       p = alloc_pt(n);
+-	       if (!p) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++	       if (!p) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+ 	       if (d.s) nlopt_sobol_next(d.s, p->x, lb, ub);
+ 	       else { /* use random points instead of LDS */
+ 		    int j;
+@@ -357,9 +357,9 @@ nlopt_result mlsl_minimize(int n, nlopt_
+ 	       p->f = f(n, p->x, NULL, f_data);
+ 	       stop->nevals++;
+ 	       if (!rb_tree_insert(&d.pts, (rb_key) p)) { 
+-		    free(p); ret = NLOPT_OUT_OF_MEMORY;
++		 free(p); NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!");
+ 	       }
+-	       if (nlopt_stop_forced(stop)) ret = NLOPT_FORCED_STOP;
++	       if (nlopt_stop_forced(stop)) NLOPT_ERR(ret , NLOPT_FORCED_STOP, "forced!");
+ 	       else if (nlopt_stop_evals(stop)) ret = NLOPT_MAXEVAL_REACHED;
+ 	       else if (nlopt_stop_time(stop)) ret = NLOPT_MAXTIME_REACHED;
+ 	       else if (p->f < stop->minf_max) ret = NLOPT_MINF_MAX_REACHED;
+@@ -386,7 +386,7 @@ nlopt_result mlsl_minimize(int n, nlopt_
+ 		    double t = nlopt_seconds();
+ 
+ 		    if (nlopt_stop_forced(stop)) {
+-			 ret = NLOPT_FORCED_STOP; break;
++		      NLOPT_ERR(ret , NLOPT_FORCED_STOP, "forced!"); break;
+ 		    }
+ 		    if (nlopt_stop_evals(stop)) {
+                          ret = NLOPT_MAXEVAL_REACHED; break;
+@@ -396,7 +396,7 @@ nlopt_result mlsl_minimize(int n, nlopt_
+ 			 ret = NLOPT_MAXTIME_REACHED; break;
+ 		    }
+ 		    lm = (double *) malloc(sizeof(double) * (n+1));
+-		    if (!lm) { ret = NLOPT_OUT_OF_MEMORY; goto done; }
++		    if (!lm) { NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!"); goto done; }
+ 		    memcpy(lm+1, p->x, sizeof(double) * n);
+ 		    lret = nlopt_optimize_limited(local_opt, lm+1, lm,
+ 						  stop->maxeval - stop->nevals,
+@@ -405,9 +405,9 @@ nlopt_result mlsl_minimize(int n, nlopt_
+ 		    p->minimized = 1;
+ 		    if (lret < 0) { free(lm); ret = lret; goto done; }
+ 		    if (!rb_tree_insert(&d.lms, lm)) { 
+-			 free(lm); ret = NLOPT_OUT_OF_MEMORY;
++		      free(lm); NLOPT_ERR(ret , NLOPT_OUT_OF_MEMORY, "mem!");
+ 		    }
+-		    else if (nlopt_stop_forced(stop)) ret = NLOPT_FORCED_STOP;
++		    else if (nlopt_stop_forced(stop)) NLOPT_ERR(ret , NLOPT_FORCED_STOP, "forced!");
+ 		    else if (*lm < stop->minf_max) 
+ 			 ret = NLOPT_MINF_MAX_REACHED;
+ 		    else if (nlopt_stop_evals(stop))
