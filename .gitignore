@@ -1,0 +1,8 @@
+pod-build/
+*~
+*.touch
+*.tar.*
+nlopt-2.4.1/
+nlopt-2.4.1.new/
+
+
