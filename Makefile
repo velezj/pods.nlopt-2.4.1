@@ -73,7 +73,7 @@ unarchive:
 build-source:
 	@echo "\n Building $(POD_NAME) \n"
 	@mkdir -p pod-build
-	cd pod-build && ../$(POD_NAME)/configure --prefix=$(BUILD_PREFIX) --with-pic --enable-shared=yes --enable-static=no 
+	cd pod-build && ../$(POD_NAME)/configure --prefix=$(BUILD_PREFIX) --with-pic --enable-shared=yes --enable-static=no  --without-guile
 	cd pod-build && make
 	@touch built.touch
 
